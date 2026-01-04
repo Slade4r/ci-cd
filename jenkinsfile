@@ -22,4 +22,5 @@ stage('Test') {
             }
         }
     }
+emailext body: 'Build Failed!', subject: 'Jenkins Build Failed', to: 'himangshugoswami112@gmail.com'
 
