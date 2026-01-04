@@ -1,0 +1,25 @@
+pipeline{
+agent any
+tools {
+jdk 'java17'
+ maven 'maven3'
+ }
+ stages{
+ stage('checkout')
+ steps{
+  git branch: 'main',
+  url: 'https://github.com/Slade4r/ci-cd.git'
+  }
+  }
+  stages('build'){
+  steps{
+  sh 'mvn clean compile'
+}
+}
+stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+    }
+
