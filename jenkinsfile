@@ -22,5 +22,11 @@ stage('Test') {
             }
         }
     }
-emailext body: 'Build Failed!', subject: 'Jenkins Build Failed', to: 'himangshugoswami112@gmail.com'
-
+ post {
+        success {
+            emailext (
+                subject: "SUCCESS: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
+                body: "Good news! Build & tests passed.\nCheck console output at ${env.BUILD_URL}",
+                to: "himangshugoswami11@gmail.com"
+            )
+        }
