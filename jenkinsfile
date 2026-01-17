@@ -1,32 +1,79 @@
-pipeline{
-agent any
-tools {
-jdk 'java17'
- maven 'maven3'
- }
- stages{
- stage('checkout')
- steps{
-  git branch: 'main',
-  url: 'https://github.com/Slade4r/ci-cd.git'
-  }
-  }
-  stages('build'){
-  steps{
-  sh 'mvn clean compile'
-}
-}
-stage('Test') {
+pipeline {
+    agent any
+
+    environment {
+        SLACK_WEBHOOK = credentials('slack-webhook-id')
+        EMAIL_RECIPIENTS = 'wreckergaming6@gmail.com'
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '30'))
+        timestamps()
+    }
+
+    stages {
+        stage('Checkout') {
             steps {
+                echo 'Cloning repository...'
+                git branch: 'main', url: 'https://github.com/slade23233/cart-services.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo 'Building project...'
+                sh 'mvn clean install'
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                echo 'Running unit tests...'
                 sh 'mvn test'
             }
         }
+
+        stage('Package Docker Image') {
+            steps {
+                echo 'Building Docker image...'
+                sh 'mvn spring-boot:build-image -DskipTests'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deploying application...'
+                sh 'export $(cat .env | xargs) && docker-compose up -d'
+            }
+        }
     }
- post {
+
+    post {
         success {
-            emailext (
-                subject: "SUCCESS: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
-                body: "Good news! Build & tests passed.\nCheck console output at ${env.BUILD_URL}",
-                to: "himangshugoswami11@gmail.com"
+            sh """
+              curl -X POST -H 'Content-type: application/json' \
+              --data '{"text":"✅ CART-SERVICE BUILD SUCCESS\\nJob: ${env.JOB_NAME}\\nBuild: #${env.BUILD_NUMBER}"}' \
+              $SLACK_WEBHOOK
+            """
+        }
+
+        failure {
+            sh """
+              curl -X POST -H 'Content-type: application/json' \
+              --data '{"text":"❌ CART-SERVICE BUILD FAILED\\nJob: ${env.JOB_NAME}\\nBuild: #${env.BUILD_NUMBER}"}' \
+              $SLACK_WEBHOOK
+            """
+
+            mail(
+                to: EMAIL_RECIPIENTS,
+                subject: "❌ CART-SERVICE Build Failed",
+                body: "Check Jenkins logs: ${env.BUILD_URL}"
             )
         }
+
+        always {
+            echo 'Cleaning up Docker...'
+            sh 'docker system prune -f || true'
+        }
+    }
+}
